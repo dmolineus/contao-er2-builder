@@ -1,0 +1,22 @@
+{
+	"name": "bit3/contao-er2-builder",
+	"description": "Create an ER2 compatible package from a composer designed repository.",
+	"require": {
+		"php": ">=5.4",
+		"symfony/console": "~2.2",
+		"symfony/process": "~2.2",
+		"symfony/filesystem": "~2.2"
+	},
+	"license": "LGPL-3.0+",
+	"authors": [
+		{
+			"name": "Tristan Lins",
+			"email": "tristan.lins@bit3.de"
+		}
+	],
+	"autoload": {
+		"psr-0": {
+			"ER2Builder": "src/"
+		}
+	}
+}
