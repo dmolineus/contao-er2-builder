@@ -27,7 +27,8 @@ class BuildCommand extends Command
 
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
-		$createZip = $input->getOption('zip');
+		$root = dirname(dirname(dirname(__DIR__)));
+
 		$createDir = $input->getOption('dir');
 		$branch = $input->getOption('branch');
 
@@ -50,9 +51,9 @@ class BuildCommand extends Command
 			$output->write($buffer);
 		};
 
-		if (!file_exists(__DIR__ . '/composer.phar')) {
+		if (!file_exists($root . '/composer.phar')) {
 			$output->writeln('  - <info>Install local copy of composer</info>');
-			$process = new Process('curl -sS https://getcomposer.org/installer | php', __DIR__);
+			$process = new Process('curl -sS https://getcomposer.org/installer | php', $root);
 			$process->run($writethru);
 			if (!$process->isSuccessful()) {
 				throw new \RuntimeException($process->getErrorOutput());
@@ -103,7 +104,7 @@ class BuildCommand extends Command
 			$output->writeln('  - <info>Remove unneeded dependencies</info>');
 			foreach ($config['require'] as $package => $version) {
 				if ($package == 'contao/core' ||
-					in_array($this->getPackageType($package, $version), array('legacy-contao-module', 'contao-module'))
+					in_array($this->getPackageType($package, $version, $root), array('legacy-contao-module', 'contao-module'))
 				) {
 					$dependencies[$package] = $version;
 					unset($config['require'][$package]);
@@ -114,7 +115,7 @@ class BuildCommand extends Command
 
 
 		$output->writeln('  - <info>Install dependencies</info>');
-		$process = new Process('php ' . escapeshellarg(__DIR__ . '/composer.phar') . ' install --no-dev', $tempRepository);
+		$process = new Process('php ' . escapeshellarg($root . '/composer.phar') . ' install --no-dev', $tempRepository);
 		$process->run($writethru);
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
@@ -195,7 +196,18 @@ EOF
 
 			$autoload .= <<<EOF
 
+
+// unregister the default autoloader
+if (version_compare(VERSION, '3', '<')) {
+	spl_autoload_unregister('__autoload');
+}
+
 require_once(dirname(__DIR__) . '/classes/vendor/autoload.php');
+
+// register the default autoloader as spl autoload
+if (version_compare(VERSION, '3', '<')) {
+	spl_autoload_register('__autoload');
+}
 
 EOF
 		;
@@ -244,9 +256,9 @@ EOF
 		}
 	}
 
-	protected function getPackageType($package, $version)
+	protected function getPackageType($package, $version, $root)
 	{
-		$process = new Process('php ' . escapeshellarg(__DIR__ . '/composer.phar') . ' show ' . escapeshellarg($package) . ' ' . escapeshellarg($version));
+		$process = new Process('php ' . escapeshellarg($root . '/composer.phar') . ' show ' . escapeshellarg($package) . ' ' . escapeshellarg($version));
 		$process->run();
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
