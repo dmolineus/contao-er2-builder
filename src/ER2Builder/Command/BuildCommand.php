@@ -2,6 +2,7 @@
 
 namespace ER2Builder\Command;
 
+use Composer\Autoload\ClassMapGenerator;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressHelper;
 use Symfony\Component\Console\Input\InputArgument;
@@ -173,15 +174,28 @@ class $class extends System
 EOF
 			);
 		}
+
+		$classmapGenerator = new ClassMapGenerator();
+		$classmap = array();
+
 		$fs->mkdir($tempPackage . '/' . $modulePath . '/classes');
 		if (array_key_exists('autoload', $config)) {
 			if (array_key_exists('psr-0', $config['autoload'])) {
 				foreach ($config['autoload']['psr-0'] as $source) {
+					$classmap = array_merge($classmap, $classmapGenerator->createMap($tempRepository . '/' . $source));
+					$this->copy($tempRepository . '/' . $source, $tempPackage . '/' . $modulePath . '/classes/' . $source, $fs);
+				}
+			}
+			if (array_key_exists('classmap', $config['autoload'])) {
+				foreach ($config['autoload']['classmap'] as $source) {
+					$classmap = array_merge($classmap, $classmapGenerator->createMap($tempRepository . '/' . $source));
 					$this->copy($tempRepository . '/' . $source, $tempPackage . '/' . $modulePath . '/classes/' . $source, $fs);
 				}
 			}
 		}
 		$this->copy($tempRepository . '/vendor', $tempPackage . '/' . $modulePath . '/classes/vendor', $fs);
+
+
 		if (file_exists($tempPackage . '/' . $modulePath . '/config/autoload.php')) {
 			$autoload = file_get_contents($tempPackage . '/' . $modulePath . '/config/autoload.php');
 			$autoload = preg_replace('#\?>\s*$#', '', $autoload);
@@ -194,26 +208,64 @@ EOF
 			;
 		}
 
-			$autoload .= <<<EOF
-
-
-// unregister the default autoloader
-if (version_compare(VERSION, '3', '<')) {
-	spl_autoload_unregister('__autoload');
-}
+		$autoload .= <<<EOF
 
 require_once(dirname(__DIR__) . '/classes/vendor/autoload.php');
-
-// register the default autoloader as spl autoload
-if (version_compare(VERSION, '3', '<')) {
-	spl_autoload_register('__autoload');
-}
 
 EOF
 		;
 		file_put_contents(
 			$tempPackage . '/' . $modulePath . '/config/autoload.php',
 			$autoload
+		);
+
+
+		if (file_exists($tempPackage . '/' . $modulePath . '/config/config.php')) {
+			$config = file_get_contents($tempPackage . '/' . $modulePath . '/config/config.php');
+			$config = preg_replace('#\?>\s*$#', '', $config);
+		}
+		else {
+			$config = <<<EOF
+<?php
+
+EOF
+			;
+		}
+
+		$classmapClasses = array();
+		foreach ($classmap as $className => $path) {
+			$classmapClasses[] = $className;
+		}
+		$classmapClasses = array_map(
+			function($className) {
+				return var_export($className, true);
+			},
+			$classmapClasses
+		);
+		$classmapClasses = implode(',', $classmapClasses);
+
+		$config .= <<<EOF
+
+
+if (version_compare(VERSION, '3', '<')) {
+	spl_autoload_unregister('__autoload');
+	require_once(dirname(__DIR__) . '/classes/vendor/autoload.php');
+	spl_autoload_register('__autoload');
+
+	\$classes = array($classmapClasses);
+	\$cache = FileCache::getInstance('classes');
+	foreach (\$classes as \$class) {
+		if (!\$cache->\$class) {
+			\$cache->\$class = true;
+		}
+	}
+}
+
+EOF
+		;
+		file_put_contents(
+			$tempPackage . '/' . $modulePath . '/config/config.php',
+			$config
 		);
 
 
