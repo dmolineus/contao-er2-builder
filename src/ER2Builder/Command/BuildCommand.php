@@ -111,6 +111,9 @@ class BuildCommand extends Command
 					unset($config['require'][$package]);
 				}
 			}
+			if (empty($config['require'])) {
+				unset($config['require']);
+			}
 			file_put_contents($tempRepository . '/composer.json', json_encode($config, JSON_PRETTY_PRINT));
 		}
 
