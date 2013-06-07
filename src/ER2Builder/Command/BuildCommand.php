@@ -213,7 +213,7 @@ EOF
 
 		$autoload .= <<<EOF
 
-require_once(dirname(__DIR__) . '/classes/vendor/autoload.php');
+require_once(TL_ROOT . '/$modulePath/classes/vendor/autoload.php');
 
 EOF
 		;
@@ -252,7 +252,7 @@ EOF
 
 if (version_compare(VERSION, '3', '<')) {
 	spl_autoload_unregister('__autoload');
-	require_once(dirname(__DIR__) . '/classes/vendor/autoload.php');
+	require_once(TL_ROOT . '/$modulePath/classes/vendor/autoload.php');
 	spl_autoload_register('__autoload');
 
 	\$classes = array($classmapClasses);
