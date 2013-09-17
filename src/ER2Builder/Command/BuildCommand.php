@@ -55,6 +55,7 @@ class BuildCommand extends Command
 		if (!file_exists($root . '/composer.phar')) {
 			$output->writeln('  - <info>Install local copy of composer</info>');
 			$process = new Process('curl -sS https://getcomposer.org/installer | php', $root);
+			$process->setTimeout(120);
 			$process->run($writethru);
 			if (!$process->isSuccessful()) {
 				throw new \RuntimeException($process->getErrorOutput());
@@ -63,6 +64,7 @@ class BuildCommand extends Command
 
 		$output->writeln('  - <info>Clone project</info>');
 		$process = new Process('git clone --branch ' . escapeshellarg($branch) . ' -- ' . escapeshellarg($uri) . ' ' . escapeshellarg($tempRepository));
+		$process->setTimeout(120);
 		$process->run($writethru);
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
@@ -120,6 +122,7 @@ class BuildCommand extends Command
 
 		$output->writeln('  - <info>Install dependencies</info>');
 		$process = new Process('php ' . escapeshellarg($root . '/composer.phar') . ' install --no-dev', $tempRepository);
+		$process->setTimeout(120);
 		$process->run($writethru);
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
@@ -314,6 +317,7 @@ EOF
 	protected function getPackageType($package, $version, $root)
 	{
 		$process = new Process('php ' . escapeshellarg($root . '/composer.phar') . ' show ' . escapeshellarg($package) . ' ' . escapeshellarg($version));
+		$process->setTimeout(120);
 		$process->run();
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
