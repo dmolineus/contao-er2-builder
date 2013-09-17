@@ -85,7 +85,10 @@ class BuildCommand extends Command
 		if (array_key_exists('extra', $config) &&
 			array_key_exists('contao', $config['extra'])) {
 			if (array_key_exists('symlinks', $config['extra']['contao'])) {
-				$symlinks = $config['extra']['contao']['symlinks'];
+				$symlinks = array_merge($symlinks, $config['extra']['contao']['symlinks']);
+			}
+			if (array_key_exists('sources', $config['extra']['contao'])) {
+				$symlinks = array_merge($symlinks, $config['extra']['contao']['sources']);
 			}
 			if (array_key_exists('runonce', $config['extra']['contao'])) {
 				$runonce = $config['extra']['contao']['runonce'];
