@@ -110,6 +110,9 @@ class BuildCommand extends Command
 			$output->writeln('  - <info>Remove unneeded dependencies</info>');
 			foreach ($config['require'] as $package => $version) {
 				if ($package == 'contao/core' ||
+					$package == 'contao-community-alliance/composer' ||
+					$package == 'contao-community-alliance/composer-installer' ||
+					$package == 'contao-community-alliance/composer-plugin' ||
 					in_array($this->getPackageType($package, $version, $root), array('legacy-contao-module', 'contao-module'))
 				) {
 					$dependencies[$package] = $version;
