@@ -126,6 +126,26 @@ class BuildCommand extends Command
 		}
 
 
+		if (file_exists($tempRepository . '/composer.lock')) {
+			$lock = json_decode(file_get_contents($tempRepository . '/composer.lock'), true);
+
+			if (isset($lock['packages'])) {
+				foreach ($lock['packages'] as $index => $package) {
+					if (
+						$package['name'] == 'contao/core' ||
+						$package['name'] == 'contao-community-alliance/composer' ||
+						$package['name'] == 'contao-community-alliance/composer-installer' ||
+						$package['name'] == 'contao-community-alliance/composer-plugin' ||
+						in_array($package['type'], array('legacy-contao-module', 'contao-module'))
+					) {
+						unset($lock['packages'][$index]);
+					}
+				}
+			}
+
+			file_put_contents($tempRepository . '/composer.lock', json_encode($lock));
+		}
+
 		$output->writeln('  - <info>Install dependencies</info>');
 		$process = new Process('php ' . escapeshellarg($root . '/composer.phar') . ' install --no-dev', $tempRepository);
 		$process->setTimeout(120);
