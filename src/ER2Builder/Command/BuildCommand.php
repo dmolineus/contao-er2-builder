@@ -113,6 +113,7 @@ class BuildCommand extends Command
 					$package == 'contao-community-alliance/composer' ||
 					$package == 'contao-community-alliance/composer-installer' ||
 					$package == 'contao-community-alliance/composer-plugin' ||
+					preg_match('~^contao-legacy/~', $package) ||
 					in_array($this->getPackageType($package, $version, $root), array('legacy-contao-module', 'contao-module'))
 				) {
 					$dependencies[$package] = $version;
