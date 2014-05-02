@@ -13,6 +13,5 @@ nbproject/
 # dependencies
 build
 vendor
-composer.lock
 composer.phar
 package.zip
