@@ -218,9 +218,11 @@ EOF
 		$fs->mkdir($tempPackage . '/' . $modulePath . '/classes');
 		if (array_key_exists('autoload', $config)) {
 			if (array_key_exists('psr-0', $config['autoload'])) {
-				foreach ($config['autoload']['psr-0'] as $source) {
-					$classmap = array_merge($classmap, $classmapGenerator->createMap($tempRepository . '/' . $source));
-					$this->copy($tempRepository . '/' . $source, $tempPackage . '/' . $modulePath . '/classes/' . $source, $fs);
+				foreach ($config['autoload']['psr-0'] as $sources) {
+					foreach ((array) $sources as $source) {
+						$classmap = array_merge($classmap, $classmapGenerator->createMap($tempRepository . '/' . $source));
+						$this->copy($tempRepository . '/' . $source, $tempPackage . '/' . $modulePath . '/classes/' . $source, $fs);
+					}
 				}
 			}
 			if (array_key_exists('classmap', $config['autoload'])) {
