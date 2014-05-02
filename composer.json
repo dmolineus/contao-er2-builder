@@ -19,5 +19,11 @@
 		"psr-0": {
 			"ER2Builder": "src/"
 		}
-	}
+	},
+	"repositories": [
+		{
+			"type": "composer",
+			"url": "http://legacy-packages-via.contao-community-alliance.org/"
+		}
+	]
 }
