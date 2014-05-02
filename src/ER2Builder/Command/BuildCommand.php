@@ -144,6 +144,8 @@ class BuildCommand extends Command
 						unset($lock['packages'][$index]);
 					}
 				}
+
+				$lock['packages'] = array_values($lock['packages']);
 			}
 
 			file_put_contents($tempRepository . '/composer.lock', json_encode($lock));
