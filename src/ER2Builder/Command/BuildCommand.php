@@ -109,7 +109,9 @@ class BuildCommand extends Command
 		if (array_key_exists('require', $config)) {
 			$output->writeln('  - <info>Remove unneeded dependencies</info>');
 			foreach ($config['require'] as $package => $version) {
-				if ($package == 'contao/core' ||
+				if (
+					$package == 'contao' ||
+					$package == 'contao/core' ||
 					$package == 'contao-community-alliance/composer' ||
 					$package == 'contao-community-alliance/composer-installer' ||
 					$package == 'contao-community-alliance/composer-plugin' ||
