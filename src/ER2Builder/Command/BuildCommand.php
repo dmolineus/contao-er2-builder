@@ -310,7 +310,7 @@ EOF
 
 		$process = new Process('git describe --all HEAD', $tempRepository);
 		$process->setTimeout(120);
-		$process->run($writethru);
+		$process->run();
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
 		}
@@ -318,7 +318,7 @@ EOF
 
 		$process = new Process('git rev-parse HEAD', $tempRepository);
 		$process->setTimeout(120);
-		$process->run($writethru);
+		$process->run();
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
 		}
@@ -326,7 +326,7 @@ EOF
 
 		$process = new Process('git log -1 --format=format:%cD HEAD', $tempRepository);
 		$process->setTimeout(120);
-		$process->run($writethru);
+		$process->run();
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
 		}
