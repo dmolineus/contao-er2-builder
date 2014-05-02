@@ -308,6 +308,42 @@ EOF
 		);
 
 
+		$process = new Process('git describe --all HEAD', $tempRepository);
+		$process->setTimeout(120);
+		$process->run($writethru);
+		if (!$process->isSuccessful()) {
+			throw new \RuntimeException($process->getErrorOutput());
+		}
+		$describe = trim($process->getOutput());
+
+		$process = new Process('git rev-parse HEAD', $tempRepository);
+		$process->setTimeout(120);
+		$process->run($writethru);
+		if (!$process->isSuccessful()) {
+			throw new \RuntimeException($process->getErrorOutput());
+		}
+		$commit = trim($process->getOutput());
+
+		$process = new Process('git log -1 --format=format:%cD HEAD', $tempRepository);
+		$process->setTimeout(120);
+		$process->run($writethru);
+		if (!$process->isSuccessful()) {
+			throw new \RuntimeException($process->getErrorOutput());
+		}
+		$datetime = trim($process->getOutput());
+
+		$output->writeln('  - <info>Write release file</info>');
+		file_put_contents(
+			$tempPackage . '/' . $modulePath . '/RELEASE',
+			<<<EOF
+url: $uri
+head: $describe
+commit: $commit
+datetime: $datetime
+EOF
+		);
+
+
 		if (count($dependencies)) {
 			$output->writeln('  - <info>Remember to define the dependencies</info>');
 			foreach ($dependencies as $package => $version) {
