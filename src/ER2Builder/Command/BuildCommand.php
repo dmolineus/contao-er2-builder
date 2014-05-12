@@ -169,7 +169,7 @@ class BuildCommand extends Command
 			$fs->copy($tempRepository . '/' . $file, $tempPackage . '/' . $modulePath . '/config/runonce_' . $index . '.php');
 		}
 		if (count($runonce)) {
-			$class = uniqid('runonce_', true);
+			$class = 'runonce_' . md5(uniqid('', true));
 			file_put_contents(
 				$tempPackage . '/' . $modulePath . '/config/runonce.php',
 				<<<EOF
