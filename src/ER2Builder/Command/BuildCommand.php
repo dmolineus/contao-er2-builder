@@ -105,6 +105,9 @@ class BuildCommand extends Command
 			$output->writeln('  * <comment>Module path not found, guessing the module path from name: ' . $modulePath . '</comment>');
 		}
 
+		if (!array_key_exists('replace', $config)) {
+			$config['replace'] = array();
+		}
 
 		if (array_key_exists('require', $config)) {
 			$output->writeln('  - <info>Remove unneeded dependencies</info>');
@@ -118,6 +121,7 @@ class BuildCommand extends Command
 					preg_match('~^contao-legacy/~', $package) ||
 					in_array($this->getPackageType($package, $version, $root), array('legacy-contao-module', 'contao-module'))
 				) {
+					$config['replace'][$package] = '*';
 					$dependencies[$package] = $version;
 					unset($config['require'][$package]);
 				}
@@ -125,7 +129,6 @@ class BuildCommand extends Command
 			if (empty($config['require'])) {
 				unset($config['require']);
 			}
-			file_put_contents($tempRepository . '/composer.json', json_encode($config, JSON_PRETTY_PRINT));
 		}
 
 
@@ -141,6 +144,7 @@ class BuildCommand extends Command
 						$package['name'] == 'contao-community-alliance/composer-plugin' ||
 						in_array($package['type'], array('legacy-contao-module', 'contao-module'))
 					) {
+						$config['replace'][$package['name']] = '*';
 						unset($lock['packages'][$index]);
 					}
 				}
@@ -150,6 +154,8 @@ class BuildCommand extends Command
 
 			file_put_contents($tempRepository . '/composer.lock', json_encode($lock));
 		}
+
+		file_put_contents($tempRepository . '/composer.json', json_encode($config, JSON_PRETTY_PRINT));
 
 		$output->writeln('  - <info>Install dependencies</info>');
 		$process = new Process('php ' . escapeshellarg($root . '/composer.phar') . ' install --no-dev', $tempRepository);
