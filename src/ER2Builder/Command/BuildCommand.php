@@ -231,6 +231,14 @@ EOF
 					}
 				}
 			}
+			if (array_key_exists('psr-4', $config['autoload'])) {
+				foreach ($config['autoload']['psr-4'] as $sources) {
+					foreach ((array) $sources as $source) {
+						$classmap = array_merge($classmap, $classmapGenerator->createMap($tempRepository . '/' . $source));
+						$this->copy($tempRepository . '/' . $source, $tempPackage . '/' . $modulePath . '/classes/' . $source, $fs);
+					}
+				}
+			}
 			if (array_key_exists('classmap', $config['autoload'])) {
 				foreach ($config['autoload']['classmap'] as $source) {
 					$classmap = array_merge($classmap, $classmapGenerator->createMap($tempRepository . '/' . $source));
