@@ -17,7 +17,7 @@ class BuildCommand extends Command
 	private $timeout;
 
 	private $composerConfig;
-	
+
 	protected function configure()
 	{
 		$this
@@ -25,9 +25,10 @@ class BuildCommand extends Command
 			->setDescription('Build an ER2 package from a composer designed project.')
 			->addOption('zip', 'Z', InputOption::VALUE_NONE, 'Create a zip archive (enabled by default, only present for sanity).')
 			->addOption('dir', 'D', InputOption::VALUE_NONE, 'Create a directory instead of an archive.')
+			->addOption('lockfile', 'n', InputOption::VALUE_NONE, 'Set option to 0 to ignore composer.lock in package', 1)
 			->addOption('branch', 'b', InputOption::VALUE_REQUIRED, 'The branch to use.', 'master')
 			->addOption('timeout', 't', InputOption::VALUE_OPTIONAL, 'Timeout for started processes', 120)
-			->addOption('composer', 'c', InputOption::VALUE_OPTIONAL, 'Optional composer file which is merged with default one', '/path/to/composer.json')
+			->addOption('config', 'c', InputOption::VALUE_OPTIONAL, 'Optional composer config file which is merged with the downloaded composer.json. Useful for non published packages')
 			->addArgument('uri', InputArgument::REQUIRED, 'URI to the git repository.')
 			->addArgument('output', InputArgument::OPTIONAL, 'The output path.', 'package.zip');
 	}
@@ -43,7 +44,8 @@ class BuildCommand extends Command
 		$uri = $input->getArgument('uri');
 		$out = $input->getArgument('output');
 
-		$config = $input->getOption('composer');
+		$lockfile = $input->getOption('lockfile');
+		$config   = $input->getOption('config');
 
 		if($config) {
 			$this->composerConfig = json_decode(file_get_contents($config), true);
@@ -136,8 +138,9 @@ class BuildCommand extends Command
 					$package == 'contao-community-alliance/composer' ||
 					$package == 'contao-community-alliance/composer-installer' ||
 					$package == 'contao-community-alliance/composer-plugin' ||
+					$package == 'contao-community-alliance/composer-plugin' ||
 					preg_match('~^contao-legacy/~', $package) ||
-					in_array($this->getPackageType($package, $version, $root), array('legacy-contao-module', 'contao-module'))
+					in_array($this->getPackageType($package, $version, $root, $config), array('legacy-contao-module', 'contao-module'))
 				) {
 					$config['replace'][$package] = '*';
 					$dependencies[$package] = $version;
@@ -151,26 +154,31 @@ class BuildCommand extends Command
 
 
 		if (file_exists($tempRepository . '/composer.lock')) {
-			$lock = json_decode(file_get_contents($tempRepository . '/composer.lock'), true);
+			if ($lockfile) {
+				$lock = json_decode(file_get_contents($tempRepository . '/composer.lock'), true);
 
-			if (isset($lock['packages'])) {
-				foreach ($lock['packages'] as $index => $package) {
-					if (
-						$package['name'] == 'contao/core' ||
-						$package['name'] == 'contao-community-alliance/composer' ||
-						$package['name'] == 'contao-community-alliance/composer-installer' ||
-						$package['name'] == 'contao-community-alliance/composer-plugin' ||
-						in_array($package['type'], array('legacy-contao-module', 'contao-module'))
-					) {
-						$config['replace'][$package['name']] = '*';
-						unset($lock['packages'][$index]);
+				if (isset($lock['packages'])) {
+					foreach ($lock['packages'] as $index => $package) {
+						if (
+							$package['name'] == 'contao/core' ||
+							$package['name'] == 'contao-community-alliance/composer' ||
+							$package['name'] == 'contao-community-alliance/composer-installer' ||
+							$package['name'] == 'contao-community-alliance/composer-plugin' ||
+							in_array($package['type'], array('legacy-contao-module', 'contao-module'))
+						) {
+							$config['replace'][$package['name']] = '*';
+							unset($lock['packages'][$index]);
+						}
 					}
+
+					$lock['packages'] = array_values($lock['packages']);
 				}
 
-				$lock['packages'] = array_values($lock['packages']);
+				file_put_contents($tempRepository . '/composer.lock', json_encode($lock));
 			}
-
-			file_put_contents($tempRepository . '/composer.lock', json_encode($lock));
+			else {
+				unlink($tempRepository . '/composer.lock');
+			}
 		}
 
 		file_put_contents($tempRepository . '/composer.json', json_encode($config, JSON_PRETTY_PRINT));
@@ -415,8 +423,16 @@ EOF
 		}
 	}
 
-	protected function getPackageType($package, $version, $root)
+	protected function getPackageType($package, $version, $root, array $config)
 	{
+		if(isset($config['repositories']) && !empty($config['repositories'])) {
+			foreach($config['repositories'] as $repository) {
+				if(isset($repository['install']['package']) && $repository['install']['package'] == $package) {
+					return $repository['install']['type'];
+				}
+			}
+		}
+
 		$process = new Process('php ' . escapeshellarg($root . '/composer.phar') . ' show ' . escapeshellarg($package) . ' ' . escapeshellarg($version));
 		$process->setTimeout($this->timeout);
 		$process->run();
