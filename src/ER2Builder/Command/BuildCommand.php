@@ -14,6 +14,10 @@ use Symfony\Component\Process\Process;
 
 class BuildCommand extends Command
 {
+	private $timeout;
+
+	private $composerConfig;
+	
 	protected function configure()
 	{
 		$this
@@ -22,6 +26,8 @@ class BuildCommand extends Command
 			->addOption('zip', 'Z', InputOption::VALUE_NONE, 'Create a zip archive (enabled by default, only present for sanity).')
 			->addOption('dir', 'D', InputOption::VALUE_NONE, 'Create a directory instead of an archive.')
 			->addOption('branch', 'b', InputOption::VALUE_REQUIRED, 'The branch to use.', 'master')
+			->addOption('timeout', 't', InputOption::VALUE_OPTIONAL, 'Timeout for started processes', 120)
+			->addOption('composer', 'c', InputOption::VALUE_OPTIONAL, 'Optional composer file which is merged with default one', '/path/to/composer.json')
 			->addArgument('uri', InputArgument::REQUIRED, 'URI to the git repository.')
 			->addArgument('output', InputArgument::OPTIONAL, 'The output path.', 'package.zip');
 	}
@@ -30,11 +36,18 @@ class BuildCommand extends Command
 	{
 		$root = dirname(dirname(dirname(__DIR__)));
 
-		$createDir = $input->getOption('dir');
-		$branch = $input->getOption('branch');
+		$createDir     = $input->getOption('dir');
+		$branch        = $input->getOption('branch');
+		$this->timeout = (int) $input->getOption('timeout') ?: 120;
 
 		$uri = $input->getArgument('uri');
 		$out = $input->getArgument('output');
+
+		$config = $input->getOption('composer');
+
+		if($config) {
+			$this->composerConfig = json_decode(file_get_contents($config), true);
+		}
 
 		$dependencies = array();
 
@@ -55,7 +68,7 @@ class BuildCommand extends Command
 		if (!file_exists($root . '/composer.phar')) {
 			$output->writeln('  - <info>Install local copy of composer</info>');
 			$process = new Process('curl -sS https://getcomposer.org/installer | php', $root);
-			$process->setTimeout(120);
+			$process->setTimeout($this->timeout);
 			$process->run($writethru);
 			if (!$process->isSuccessful()) {
 				throw new \RuntimeException($process->getErrorOutput());
@@ -64,7 +77,7 @@ class BuildCommand extends Command
 
 		$output->writeln('  - <info>Clone project</info>');
 		$process = new Process('git clone --branch ' . escapeshellarg($branch) . ' -- ' . escapeshellarg($uri) . ' ' . escapeshellarg($tempRepository));
-		$process->setTimeout(120);
+		$process->setTimeout($this->timeout);
 		$process->run($writethru);
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
@@ -76,6 +89,11 @@ class BuildCommand extends Command
 			throw new \RuntimeException('Project ' . $uri . ' does not seems to be a composer project.');
 		}
 		$config = json_decode(file_get_contents($tempRepository . '/composer.json'), true);
+
+		if($this->composerConfig) {
+			$config = $this->mergeConfig($config, $this->composerConfig);
+		}
+
 		if (!array_key_exists('type', $config) || $config['type'] != 'contao-module') {
 			throw new \RuntimeException('Project ' . $uri . ' does not seems to be a contao module.');
 		}
@@ -159,7 +177,7 @@ class BuildCommand extends Command
 
 		$output->writeln('  - <info>Install dependencies</info>');
 		$process = new Process('php ' . escapeshellarg($root . '/composer.phar') . ' install --no-dev', $tempRepository);
-		$process->setTimeout(120);
+		$process->setTimeout($this->timeout);
 		$process->run($writethru);
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
@@ -323,7 +341,7 @@ EOF
 
 
 		$process = new Process('git describe --all HEAD', $tempRepository);
-		$process->setTimeout(120);
+		$process->setTimeout($this->timeout);
 		$process->run();
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
@@ -331,7 +349,7 @@ EOF
 		$describe = trim($process->getOutput());
 
 		$process = new Process('git rev-parse HEAD', $tempRepository);
-		$process->setTimeout(120);
+		$process->setTimeout($this->timeout);
 		$process->run();
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
@@ -339,7 +357,7 @@ EOF
 		$commit = trim($process->getOutput());
 
 		$process = new Process('git log -1 --format=format:%cD HEAD', $tempRepository);
-		$process->setTimeout(120);
+		$process->setTimeout($this->timeout);
 		$process->run();
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
@@ -400,7 +418,7 @@ EOF
 	protected function getPackageType($package, $version, $root)
 	{
 		$process = new Process('php ' . escapeshellarg($root . '/composer.phar') . ' show ' . escapeshellarg($package) . ' ' . escapeshellarg($version));
-		$process->setTimeout(120);
+		$process->setTimeout($this->timeout);
 		$process->run();
 		if (!$process->isSuccessful()) {
 			throw new \RuntimeException($process->getErrorOutput());
@@ -430,5 +448,27 @@ EOF
 		else {
 			$zip->addFile($source, $target);
 		}
+	}
+
+
+	/**
+	 * @param $configA
+	 * @param $configB
+	 * @return mixed
+	 */
+	protected function mergeConfig($configA, $configB)
+	{
+		$merged = $configA;
+
+		foreach ($configB as $key => &$value) {
+			if (is_array($value) && isset($merged[$key]) && is_array($merged[$key])) {
+				$merged[$key] = $this->mergeConfig($merged[$key], $value);
+			}
+			else {
+				$merged[$key] = $value;
+			}
+		}
+
+		return $merged;
 	}
 }
